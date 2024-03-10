@@ -1,9 +1,14 @@
 import os
 from typing import *
 from mobase import *
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
-from PyQt5.QtWidgets import *
+try:
+    from PyQt5.QtCore import *
+    from PyQt5.QtGui import *
+    from PyQt5.QtWidgets import *
+except ImportError:
+    from PyQt6.QtCore import *
+    from PyQt6.QtGui import *
+    from PyQt6.QtWidgets import *
 
 from . import crashlogs
 
@@ -22,7 +27,7 @@ class CrashLogViewer(IPluginTool):
         return "Lists crash logs"
 
     def author(self) -> str:
-        return "Parapets"
+        return "Parapets, edited by Miss Corruption"
 
     def requirements(self) -> List["IPluginRequirement"]:
         return [
@@ -64,7 +69,10 @@ class CrashLogViewer(IPluginTool):
         proxy_model = FileFilterProxyModel()
         proxy_model.setSourceModel(source_model)
         proxy_model.setFilterWildcard(self.finder.filter)
-        proxy_model.sort(0, Qt.DescendingOrder)
+        try:
+            proxy_model.sort(0, Qt.DescendingOrder)
+        except Exception:
+            proxy_model.sort(0, Qt.SortOrder.DescendingOrder)
 
         dialog = QDialog(main_window)
         dialog.setWindowTitle("Crash Log Viewer")
@@ -73,7 +81,10 @@ class CrashLogViewer(IPluginTool):
         list.setModel(proxy_model)
         list.setRootIndex(proxy_model.mapFromSource(source_model.index(log_dir)))
         list.setDragEnabled(True)
-        list.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        try:
+            list.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        except Exception:
+            list.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
 
         def open(index : "QModelIndex") -> None:
             source_index = proxy_model.mapToSource(index)
@@ -102,14 +113,22 @@ class CrashLogViewer(IPluginTool):
         delete_action.triggered.connect(for_selected(delete))
         list.addAction(delete_action)
 
-        list.setContextMenuPolicy(Qt.ActionsContextMenu)
+        try:
+            list.setContextMenuPolicy(Qt.ActionsContextMenu)
+        except Exception:
+            list.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
         list.activated.connect(open)
 
         button_box = QDialogButtonBox(dialog)
-        button_box.setOrientation(Qt.Horizontal)
-        button_box.setStandardButtons(QDialogButtonBox.Close)
         button_box.rejected.connect(dialog.reject)
-        button_box.button(QDialogButtonBox.Close).setAutoDefault(False)
+        try:
+            button_box.setOrientation(Qt.Horizontal)
+            button_box.setStandardButtons(QDialogButtonBox.Close)
+            button_box.button(QDialogButtonBox.Close).setAutoDefault(False)
+        except Exception:
+            button_box.setOrientation(Qt.Orientation.Horizontal)
+            button_box.setStandardButtons(QDialogButtonBox.StandardButton.Close)
+            button_box.button(QDialogButtonBox.StandardButton.Close).setAutoDefault(False)
 
         layout = QVBoxLayout()
         layout.addWidget(list)

@@ -1,8 +1,13 @@
 from typing import *
 from mobase import *
-if TYPE_CHECKING:
-    from PyQt5.QtWidgets import QMainWindow
-from PyQt5.QtCore import *
+try:
+    from PyQt5.QtCore import *
+    if TYPE_CHECKING:
+        from PyQt5.QtWidgets import QMainWindow
+except ImportError:
+    from PyQt6.QtCore import *
+    if TYPE_CHECKING:
+        from PyQt6.QtWidgets import QMainWindow
 
 from .crashlogutil import CrashLogProcessor
 from . import crashlogs
@@ -23,7 +28,7 @@ class CrashLogLabeler(IPlugin):
         return "Labels known addresses in Skyrim crash logs"
 
     def author(self) -> str:
-        return "Parapets"
+        return "Parapets, edited by Miss Corruption"
 
     def requirements(self) -> List["IPluginRequirement"]:
         games = set.intersection(
