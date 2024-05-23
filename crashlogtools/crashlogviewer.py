@@ -1,16 +1,31 @@
 import os
 from typing import *
+
 from mobase import *
+
 try:
-    from PyQt5.QtCore import *
-    from PyQt5.QtGui import *
-    from PyQt5.QtWidgets import *
-except ImportError:
     from PyQt6.QtCore import *
     from PyQt6.QtGui import *
     from PyQt6.QtWidgets import *
 
+    SortOrder = Qt.SortOrder
+    SelectionMode = QAbstractItemView.SelectionMode
+    ContextMenuPolicy = Qt.ContextMenuPolicy
+    StandardButton = QDialogButtonBox.StandardButton
+    Orientation = Qt.Orientation
+except ImportError:
+    from PyQt5.QtCore import *
+    from PyQt5.QtGui import *
+    from PyQt5.QtWidgets import *
+
+    SortOrder = Qt
+    SelectionMode = QAbstractItemView
+    ContextMenuPolicy = Qt
+    StandardButton = QDialogButtonBox
+    Orientation = Qt
+
 from . import crashlogs
+
 
 class CrashLogViewer(IPluginTool):
 
@@ -30,9 +45,7 @@ class CrashLogViewer(IPluginTool):
         return "Parapets, edited by Miss Corruption"
 
     def requirements(self) -> List["IPluginRequirement"]:
-        return [
-            PluginRequirementFactory.gameDependency(crashlogs.supported_games())
-        ]
+        return [PluginRequirementFactory.gameDependency(crashlogs.supported_games())]
 
     def settings(self) -> List["PluginSetting"]:
         return []
@@ -46,7 +59,7 @@ class CrashLogViewer(IPluginTool):
     def icon(self) -> "QIcon":
         return QIcon()
 
-    def init(self, organizer : "IOrganizer") -> bool:
+    def init(self, organizer: "IOrganizer") -> bool:
         self.organizer = organizer
         organizer.onUserInterfaceInitialized(self.onUserInterfaceInitializedCallback)
 
@@ -55,12 +68,12 @@ class CrashLogViewer(IPluginTool):
     def display(self) -> None:
         self.dialog.show()
 
-    def onUserInterfaceInitializedCallback(self, main_window : "QMainWindow"):
+    def onUserInterfaceInitializedCallback(self, main_window: "QMainWindow"):
         game = self.organizer.managedGame().gameName()
         self.finder = crashlogs.get_finder(game)
         self.dialog = self.make_dialog(main_window)
 
-    def make_dialog(self, main_window : "QMainWindow") -> "QDialog":
+    def make_dialog(self, main_window: "QMainWindow") -> "QDialog":
         log_dir = self.finder.log_directory
 
         source_model = QFileSystemModel()
@@ -69,83 +82,70 @@ class CrashLogViewer(IPluginTool):
         proxy_model = FileFilterProxyModel()
         proxy_model.setSourceModel(source_model)
         proxy_model.setFilterWildcard(self.finder.filter)
-        try:
-            proxy_model.sort(0, Qt.DescendingOrder)
-        except Exception:
-            proxy_model.sort(0, Qt.SortOrder.DescendingOrder)
+        proxy_model.sort(0, SortOrder.DescendingOrder)
 
         dialog = QDialog(main_window)
         dialog.setWindowTitle("Crash Log Viewer")
 
-        list = QListView(dialog)
-        list.setModel(proxy_model)
-        list.setRootIndex(proxy_model.mapFromSource(source_model.index(log_dir)))
-        list.setDragEnabled(True)
-        try:
-            list.setSelectionMode(QAbstractItemView.ExtendedSelection)
-        except Exception:
-            list.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        logs_list = QListView(dialog)
+        logs_list.setModel(proxy_model)
+        logs_list.setRootIndex(proxy_model.mapFromSource(source_model.index(log_dir)))
+        logs_list.setDragEnabled(True)
+        logs_list.setSelectionMode(SelectionMode.ExtendedSelection)
 
-        def open(index : "QModelIndex") -> None:
+        def open_logs(index: "QModelIndex") -> None:
             source_index = proxy_model.mapToSource(index)
             os.startfile(source_model.filePath(source_index))
 
-        def delete(index : "QModelIndex") -> None:
+        def delete(index: "QModelIndex") -> None:
             source_index = proxy_model.mapToSource(index)
             QFile(source_model.filePath(source_index)).moveToTrash()
 
         def for_selected(
-            action : Callable[["QModelIndex"], None]
+            action: Callable[["QModelIndex"], None]
         ) -> Callable[[bool], None]:
-            def fn(checked : bool):
-                for index in list.selectedIndexes():
+            def fn(checked: bool):
+                for index in logs_list.selectedIndexes():
                     action(index)
+
             return fn
 
-        open_action = QAction(list.tr("&Open"), list)
-        open_action.triggered.connect(for_selected(open))
+        open_action = QAction(logs_list.tr("&Open"), logs_list)
+        open_action.triggered.connect(for_selected(open_logs))
         f = open_action.font()
         f.setBold(True)
         open_action.setFont(f)
-        list.addAction(open_action)
+        logs_list.addAction(open_action)
 
-        delete_action = QAction(list.tr("&Delete"), list)
+        delete_action = QAction(logs_list.tr("&Delete"), logs_list)
         delete_action.triggered.connect(for_selected(delete))
-        list.addAction(delete_action)
-
-        try:
-            list.setContextMenuPolicy(Qt.ActionsContextMenu)
-        except Exception:
-            list.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
-        list.activated.connect(open)
+        logs_list.addAction(delete_action)
+        logs_list.setContextMenuPolicy(ContextMenuPolicy.ActionsContextMenu)
+        logs_list.activated.connect(open_logs)
 
         button_box = QDialogButtonBox(dialog)
         button_box.rejected.connect(dialog.reject)
-        try:
-            button_box.setOrientation(Qt.Horizontal)
-            button_box.setStandardButtons(QDialogButtonBox.Close)
-            button_box.button(QDialogButtonBox.Close).setAutoDefault(False)
-        except Exception:
-            button_box.setOrientation(Qt.Orientation.Horizontal)
-            button_box.setStandardButtons(QDialogButtonBox.StandardButton.Close)
-            button_box.button(QDialogButtonBox.StandardButton.Close).setAutoDefault(False)
+        button_box.setOrientation(Orientation.Horizontal)
+        button_box.setStandardButtons(StandardButton.Close)
+        button_box.button(StandardButton.Close).setAutoDefault(False)
 
         layout = QVBoxLayout()
-        layout.addWidget(list)
+        layout.addWidget(logs_list)
         layout.addWidget(button_box)
         dialog.setLayout(layout)
 
         return dialog
+
 
 class FileFilterProxyModel(QSortFilterProxyModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def filePath(self, index : "QModelIndex") -> str:
+    def filePath(self, index: "QModelIndex") -> str:
         return self.sourceModel().filePath(self.mapToSource(index))
 
-    def filterAcceptsRow(self, source_row : int, source_parent : "QModelIndex") -> bool:
+    def filterAcceptsRow(self, source_row: int, source_parent: "QModelIndex") -> bool:
         source_model = self.sourceModel()
         if source_parent == source_model.index(source_model.rootPath()):
             return super().filterAcceptsRow(source_row, source_parent)

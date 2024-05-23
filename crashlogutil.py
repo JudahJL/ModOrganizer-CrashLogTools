@@ -40,7 +40,6 @@ class CrashLogProcessor:
 
     def process_log(self, log: str) -> None:
         crash_log = CrashLog(log)
-
         addr_ids = set()
         width = 0
         for line in crash_log.call_stack:
@@ -52,8 +51,8 @@ class CrashLogProcessor:
 
         if not addr_ids:
             return
-        id_list = sorted(addr_ids)
 
+        id_list = sorted(addr_ids)
         id_lookup = self.lookup_ids(id_list)
         if not id_lookup:
             return
@@ -67,12 +66,10 @@ class CrashLogProcessor:
         match = STACK_PATTERN.match(line)
         if not match:
             return line
-
         stack_frame = match.group(0)
         name = id_lookup.get(int(match.group("id")))
         if not name:
             return stack_frame + "\n"
-
         name = name.rstrip("_*")
         return stack_frame.ljust(width) + name + "\n"
 
@@ -80,7 +77,6 @@ class CrashLogProcessor:
         database = self.get_database_path()
         if not os.path.exists(database):
             return {}
-
         lookup = {}
         with IdScanner(database) as scanner:
             for addr_id in id_list:
@@ -96,7 +92,6 @@ class CrashLog:
         self.call_stack = []
         self.post_call_stack = []
         self.changed = False
-
         self.read_file(path)
 
     def visit_call_stack(self, callback: Callable[[str], None]) -> None:
@@ -121,27 +116,21 @@ class CrashLog:
                 line = f.readline()
                 if not line:
                     return
-
                 self.pre_call_stack.append(line)
                 if line == "PROBABLE CALL STACK:\n":
                     break
-
             while True:
                 line = f.readline()
                 if not line:
                     return
-
                 if line == "\n":
                     break
                 elif line == "REGISTERS:\n":
                     self.post_call_stack.append("\n")
                     break
-
                 self.call_stack.append(line)
-
             while True:
                 self.post_call_stack.append(line)
-
                 line = f.readline()
                 if not line:
                     return
@@ -168,10 +157,8 @@ class IdScanner:
         while self.nextLine:
             line_id, name = tuple(self.nextLine.split())
             parsed_id = int(line_id)
-
             if parsed_id == addr_id:
                 return name
             elif parsed_id > addr_id:
                 return ""
-
             self.nextLine = self.f.readline()
