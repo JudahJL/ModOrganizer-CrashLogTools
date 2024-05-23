@@ -2,6 +2,7 @@ import os
 import re
 from typing import Callable, Dict, List
 
+import dulwich
 from dulwich import porcelain as git
 
 from . import addresslib
@@ -23,17 +24,18 @@ class CrashLogProcessor:
                 git.clone(
                     self.database.remote, self.git_repo, branch=self.database.branch
                 )
-            except git.Error:
-                pass
+            except git.Error as e:
+                print(f"Error cloning repository: {e}")
+                raise
 
     def update_database(self) -> None:
-        self.clone_database()
         try:
-            git.pull(self.git_repo, self.database.remote)
-            if git.active_branch(self.git_repo) != self.database.branch:
-                git.checkout(self.git_repo, self.database.branch)
-        except git.Error:
-            pass
+            with git.Repo(self.git_repo) as repo:
+                git.pull(repo, self.database.remote)
+                if git.active_branch(repo) != self.database.branch:
+                    git.checkout(repo, self.database.branch)
+        except dulwich.errors.NotGitRepository:
+            self.clone_database()
 
     def get_database_path(self) -> str:
         return os.path.join(self.git_repo, self.database.database_file)

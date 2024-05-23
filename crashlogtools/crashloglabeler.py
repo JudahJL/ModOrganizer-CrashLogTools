@@ -50,7 +50,7 @@ class CrashLogLabeler(IPlugin):
     def init(self, organizer: "IOrganizer") -> bool:
         self.organizer = organizer
         organizer.onFinishedRun(self.onFinishedRunCallback)
-        organizer.InterfaceInitializeonUserd(self.onUserInterfaceInitializedCallback)
+        organizer.onUserInterfaceInitialized(self.onUserInterfaceInitializedCallback)
 
         self.processed_logs = set()
 
