@@ -1,7 +1,7 @@
 import ctypes.wintypes
 import glob
 import os
-from typing import *
+from typing import Set
 
 CSIDL_PERSONAL = 5
 SHGFP_TYPE_CURRENT = 0

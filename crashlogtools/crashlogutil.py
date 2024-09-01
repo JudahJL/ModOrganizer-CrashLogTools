@@ -22,7 +22,9 @@ class CrashLogProcessor:
         if not os.path.exists(self.git_repo):
             try:
                 git.clone(
-                    self.database.remote, self.git_repo, branch=self.database.branch
+                    self.database.remote,
+                    self.git_repo,
+                    branch=self.database.branch,
                 )
             except git.Error as e:
                 print(f"Error cloning repository: {e}")
@@ -36,6 +38,9 @@ class CrashLogProcessor:
                     git.checkout(repo, self.database.branch)
         except dulwich.errors.NotGitRepository:
             self.clone_database()
+        except dulwich.errors.GitProtocolError as e:
+            print(f"Error during git operation: {e}")
+            raise
 
     def get_database_path(self) -> str:
         return os.path.join(self.git_repo, self.database.database_file)

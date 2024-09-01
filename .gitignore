@@ -9,6 +9,7 @@
 # IDE specific ignores
 .idea/
 *.code-workspace
+.venv/
 # Project related files
 /crashlogtools/lib/
 /crashlogtools/Skyrim Special Edition/

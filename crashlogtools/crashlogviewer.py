@@ -1,7 +1,7 @@
 import os
-from typing import *
+from typing import List, Callable
 
-from mobase import *
+from mobase import IPluginTool, VersionInfo, ReleaseType, PluginRequirementFactory
 
 try:
     from PyQt6.QtCore import *

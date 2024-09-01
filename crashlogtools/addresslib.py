@@ -1,4 +1,4 @@
-from typing import *
+from typing import Set
 
 
 class AddressDatabase(object):

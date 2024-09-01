@@ -1,14 +1,20 @@
-from typing import *
+from typing import TYPE_CHECKING, List
 
-from mobase import *
+from mobase import (
+    IPlugin,
+    PluginSetting,
+    PluginRequirementFactory,
+    ReleaseType,
+    VersionInfo,
+)
 
 try:
-    from PyQt5.QtCore import *
+    from PyQt5.QtCore import QFile
 
     if TYPE_CHECKING:
         from PyQt5.QtWidgets import QMainWindow
 except ImportError:
-    from PyQt6.QtCore import *
+    from PyQt6.QtCore import QFile
 
     if TYPE_CHECKING:
         from PyQt6.QtWidgets import QMainWindow
@@ -44,7 +50,7 @@ class CrashLogLabeler(IPlugin):
 
     def settings(self) -> List["PluginSetting"]:
         return [
-            PluginSetting("offline_mode", "Disable update from remote database", False),
+            PluginSetting("offline_mode", "Disable update from remote database", True),
         ]
 
     def init(self, organizer: "IOrganizer") -> bool:
