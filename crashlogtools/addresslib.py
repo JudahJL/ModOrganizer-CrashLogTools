@@ -1,8 +1,7 @@
 from typing import Set
 
 
-class AddressDatabase(object):
-
+class AddressDatabase:
     def __init__(self, remote: str, branch: str, database_file: str):
         self.remote = remote
         self.branch = bytes(branch, "utf-8")
@@ -20,5 +19,5 @@ def supported_games() -> Set[str]:
     return set(DATABASES.keys())
 
 
-def get_database(game: str) -> "AddressDatabase":
+def get_database(game: str) -> AddressDatabase:
     return DATABASES.get(game)

@@ -1,19 +1,20 @@
 import os
 import re
-from typing import Callable, Dict, List
+from pathlib import Path
+from typing import Callable, Dict, List, Optional
 
-import dulwich
+import dulwich.errors
 from dulwich import porcelain as git
 
 from . import addresslib
 
 STACK_PATTERN = re.compile(
-    r"(\t\[ *\d+\] 0x[0-9A-F]+ .*\+[0-9A-F]+) -> (?P<id>\d+)\+0x[0-9A-F]+"
+    r"(\t\[ *\d+] 0x[0-9A-F]+ .*\+[0-9A-F]+) -> (?P<id>\d+)\+0x[0-9A-F]+"
 )
 
 
 class CrashLogProcessor:
-    def __init__(self, game: str, delete_callback: Callable[[str], None]):
+    def __init__(self, game: str, delete_callback: Callable[[Path], None]):
         self.database = addresslib.get_database(game)
         self.git_repo = os.path.join(os.path.dirname(__file__), game)
         self.delete_callback = delete_callback
@@ -35,7 +36,7 @@ class CrashLogProcessor:
             with git.Repo(self.git_repo) as repo:
                 git.pull(repo, self.database.remote)
                 if git.active_branch(repo) != self.database.branch:
-                    git.checkout(repo, self.database.branch)
+                    git.checkout_branch(repo, self.database.branch)
         except dulwich.errors.NotGitRepository:
             self.clone_database()
         except dulwich.errors.GitProtocolError as e:
@@ -45,7 +46,7 @@ class CrashLogProcessor:
     def get_database_path(self) -> str:
         return os.path.join(self.git_repo, self.database.database_file)
 
-    def process_log(self, log: str) -> None:
+    def process_log(self, log: Path) -> None:
         crash_log = CrashLog(log)
 
         addr_ids = set()
@@ -65,12 +66,13 @@ class CrashLogProcessor:
         if not id_lookup:
             return
 
-        crash_log.rewrite_call_stack(lambda line: self.add_name(line, id_lookup, width))
+        crash_log.rewrite_call_stack(lambda a_line: self.add_name(a_line, id_lookup, width))
         if crash_log.changed:
             self.delete_callback(log)
             crash_log.write_file(log)
 
-    def add_name(self, line: str, id_lookup: Dict[int, str], width: int) -> str:
+    @staticmethod
+    def add_name(line: str, id_lookup: Dict[int, str], width: int) -> str:
         match = STACK_PATTERN.match(line)
         if not match:
             return line
@@ -98,7 +100,7 @@ class CrashLogProcessor:
 
 
 class CrashLog:
-    def __init__(self, path: str):
+    def __init__(self, path: Path):
         self.pre_call_stack = []
         self.call_stack = []
         self.post_call_stack = []
@@ -116,14 +118,14 @@ class CrashLog:
             self.changed = True
             self.call_stack = new_call_stack
 
-    def write_file(self, path: str) -> None:
-        with open(path, "w") as f:
+    def write_file(self, path: Path) -> None:
+        with path.open("w") as f:
             f.writelines(self.pre_call_stack)
             f.writelines(self.call_stack)
             f.writelines(self.post_call_stack)
 
-    def read_file(self, path: str) -> None:
-        with open(path, "r") as f:
+    def read_file(self, path: Path) -> None:
+        with path.open("r", encoding='utf-8') as f:
             while True:
                 line = f.readline()
                 if not line:
@@ -171,7 +173,7 @@ class IdScanner:
         if self.f:
             self.f.close()
 
-    def find(self, addr_id: int) -> str:
+    def find(self, addr_id: int) -> Optional[str]:
         while self.nextLine:
             line_id, name = tuple(self.nextLine.split())
             parsed_id = int(line_id)
@@ -179,6 +181,7 @@ class IdScanner:
             if parsed_id == addr_id:
                 return name
             elif parsed_id > addr_id:
-                return ""
+                return None
 
             self.nextLine = self.f.readline()
+        return None
