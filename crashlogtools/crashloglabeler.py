@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Optional
 
 from mobase import (
     IPlugin,
@@ -6,6 +6,8 @@ from mobase import (
     PluginRequirementFactory,
     ReleaseType,
     VersionInfo,
+    IPluginRequirement,
+    IOrganizer,
 )
 
 try:
@@ -25,9 +27,12 @@ from . import addresslib
 
 
 class CrashLogLabeler(IPlugin):
-
     def __init__(self):
         super().__init__()
+        self.processor: Optional[CrashLogProcessor] = None
+        self.finder: Optional[crashlogs.CrashLogFinder] = None
+        self.processed_logs = set()
+        self.organizer: Optional[IOrganizer] = None
 
     def name(self) -> str:
         return "Crash Log Labeler"
@@ -41,29 +46,28 @@ class CrashLogLabeler(IPlugin):
     def author(self) -> str:
         return "Parapets, edited by Miss Corruption"
 
-    def requirements(self) -> List["IPluginRequirement"]:
+    def requirements(self) -> List[IPluginRequirement]:
         games = set.intersection(
             addresslib.supported_games(), crashlogs.supported_games()
         )
 
-        return [PluginRequirementFactory.gameDependency(games)]
+        return [PluginRequirementFactory.gameDependency(tuple(games))]
 
-    def settings(self) -> List["PluginSetting"]:
+    def settings(self) -> List[PluginSetting]:
         return [
             PluginSetting("offline_mode", "Disable update from remote database", True),
         ]
 
-    def init(self, organizer: "IOrganizer") -> bool:
+    def init(self, organizer: IOrganizer) -> bool:
         self.organizer = organizer
         organizer.onFinishedRun(self.onFinishedRunCallback)
         organizer.onUserInterfaceInitialized(self.onUserInterfaceInitializedCallback)
 
-        self.processed_logs = set()
-
         return True
 
+    # noinspection PyUnusedLocal
     def onFinishedRunCallback(self, path: str, exit_code: int):
-        new_logs = self.finder.get_crash_logs().difference(self.processed_logs)
+        new_logs = self.finder.get_crash_logs(self.organizer).difference(self.processed_logs)
         if not new_logs:
             return
 
@@ -75,15 +79,18 @@ class CrashLogLabeler(IPlugin):
 
         self.processed_logs.update(new_logs)
 
+    # noinspection PyUnusedLocal
     def onUserInterfaceInitializedCallback(self, main_window: "QMainWindow"):
         game = self.organizer.managedGame().gameName()
         self.finder = crashlogs.get_finder(game)
-        self.processor = CrashLogProcessor(game, lambda file: QFile(file).moveToTrash())
+        if not self.finder:
+            return
+        self.processor = CrashLogProcessor(game, lambda file: QFile(str(file)).moveToTrash())
 
         if not self.organizer.pluginSetting(self.name(), "offline_mode"):
             self.processor.update_database()
 
-        logs = self.finder.get_crash_logs()
+        logs = self.finder.get_crash_logs(self.organizer)
         for log in logs:
             self.processor.process_log(log)
         self.processed_logs.update(logs)
