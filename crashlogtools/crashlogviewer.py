@@ -80,7 +80,7 @@ class CrashLogViewer(IPluginTool):
         if not logs_list:
             return
 
-        proxy_model: FileFilterProxyModel = logs_list.model()
+        proxy_model: FileFilterProxyModel = cast(FileFilterProxyModel, logs_list.model())
         if not proxy_model:
             return
 
